@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Ultimate Local Document & Comic Converter</title>
+    
+    <!-- Core Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Format Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --border: #d1d5db;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --warning-bg: #fef3c7;
+            --warning-border: #fcd34d;
+            --warning-text: #92400e;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            min-height: 100vh; 
+            min-height: 100dvh; 
+            display: flex;
+            justify-content: center;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        .container {
+            background: var(--card);
+            padding: clamp(1.5rem, 4vw, 2.5rem);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 600px;
+            margin: auto; 
+        }
+
+        h1 { color: var(--text); margin-top: 0; text-align: center; font-size: clamp(1.5rem, 5vw, 1.8rem); }
+        .subtitle { text-align: center; color: var(--text-light); font-size: clamp(0.8rem, 2.5vw, 0.9rem); margin-top: -10px; margin-bottom: 1.5rem; }
+
+        .warning-banner {
+            background-color: var(--warning-bg);
+            border: 1px solid var(--warning-border);
+            color: var(--warning-text);
+            padding: clamp(0.8rem, 2vw, 1rem);
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: clamp(0.85rem, 2.5vw, 0.95rem);
+            text-align: left;
+            line-height: 1.5;
+            display: none;
+        }
+        .warning-banner strong { color: #78350f; }
+
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: clamp(1.5rem, 4vw, 2rem);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 1.5rem;
+        }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background-color: #eff6ff; }
+        .drop-zone p { color: var(--text-light); margin: 0.5rem 0; font-size: clamp(0.85rem, 2.5vw, 1rem); }
+        .file-name { font-weight: bold; color: var(--text); word-break: break-word; margin-top: 1rem; font-size: 0.95rem; }
+        
+        .supported-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 1rem; }
+        .tag { background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .tag.warning-tag { background: #fef3c7; color: #92400e; }
+
+        .settings {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: clamp(1rem, 3vw, 1.5rem);
+            margin-bottom: 1.5rem;
+        }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            gap: 1rem;
+            flex-wrap: wrap; 
+        }
+        .setting-row:last-child { margin-bottom: 0; }
+        .setting-label { font-weight: 500; color: var(--text); font-size: clamp(0.9rem, 2.5vw, 0.95rem); }
+        
+        select {
+            cursor: pointer;
+            padding: 0.6rem 0.8rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: white;
+            font-size: 0.9rem;
+            min-height: 44px; 
+        }
+        
+        .quality-control { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 150px; }
+        input[type="range"] { cursor: pointer; flex: 1; accent-color: var(--primary); height: 24px; }
+        .quality-value { font-weight: bold; color: var(--primary); min-width: 45px; text-align: right; font-size: 0.95rem; }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+            min-height: 48px; 
+        }
+        button:hover:not(:disabled) { background-color: var(--primary-hover); }
+        button:disabled { background-color: #9ca3af; cursor: not-allowed; }
+        button:active:not(:disabled) { transform: scale(0.98); }
+
+        .progress-container { margin-top: 1.5rem; display: none; }
+        .progress-container.active { display: block; }
+        .progress-bar { width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s ease; }
+
+        .status {
+            margin-top: 1rem;
+            font-size: clamp(0.85rem, 2.5vw, 0.9rem);
+            color: var(--text-light);
+            text-align: center;
+            min-height: 1.2rem;
+            word-break: break-word;
+        }
+        .status.error { color: var(--error); font-weight: 500; }
+        .status.success { color: var(--success); font-weight: 500; }
+        .status.warning { color: var(--warning-text); font-weight: 500; }
+        
+        .spinner {
+            display: inline-block;
+            width: 16px; height: 16px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- Powered by Qwen AI Footer --- */
+        .footer {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+        }
+        .powered-by {
+            font-size: clamp(0.75rem, 2vw, 0.85rem);
+            color: var(--text-light);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .powered-by:hover { opacity: 1; }
+        .powered-by .ai-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📚 Ultimate Converter</h1>
+    <p class="subtitle">100% Local & Private. Files never leave your device.</p>
+    
+    <div id="mobiWarning" class="warning-banner">
+        ⚠️ <strong>MOBI/AZW3 Detected:</strong> These are proprietary Amazon formats and cannot be processed locally. For the best results, please convert them to EPUB first using a free tool like <a href="https://calibre-ebook.com/" target="_blank" style="color: #92400e; text-decoration: underline;">Calibre</a>. Conversion is disabled for these files.
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+        <p>Drag & drop your files here</p>
+        <input type="file" id="fileInput" accept=".cbz,.cbs,.cbr,.epub,.docx,.xlsx,.csv,.txt,.tiff,.tif,.mobi,.azw3" hidden>
+        <button type="button" onclick="document.getElementById('fileInput').click()">Browse Files</button>
+        <p class="file-name" id="fileName"></p>
+        <div class="supported-tags">
+            <span class="tag">CBZ/CBR</span>
+            <span class="tag">EPUB</span>
+            <span class="tag">DOCX</span>
+            <span class="tag">XLSX/CSV</span>
+            <span class="tag">TXT</span>
+            <span class="tag">TIFF</span>
+            <span class="tag warning-tag">MOBI/AZW3*</span>
+        </div>
+    </div>
+
+    <div class="settings">
+        <div class="setting-row">
+            <span class="setting-label">Output Format:</span>
+            <select id="outputFormat">
+                <option value="pdf">PDF Document</option>
+                <option value="zip">Images (ZIP Archive)</option>
+            </select>
+        </div>
+        <div class="setting-row">
+            <span class="setting-label">Image Quality:</span>
+            <div class="quality-control">
+                <input type="range" id="qualitySlider" min="10" max="100" value="90">
+                <span class="quality-value" id="qualityValue">90%</span>
+            </div>
+        </div>
+    </div>
+
+    <button id="convertBtn" disabled>Convert</button>
+    
+    <div class="progress-container" id="progressContainer">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <!-- Powered by Qwen AI Footer -->
+    <div class="footer">
+        <div class="powered-by">
+            <span>Powered by</span>
+            <span class="ai-badge">Qwen AI</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    const { PDFDocument } = PDFLib;
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileNameDisplay = document.getElementById('fileName');
+    const convertBtn = document.getElementById('convertBtn');
+    const statusDisplay = document.getElementById('status');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressFill = document.getElementById('progressFill');
+    const outputFormat = document.getElementById('outputFormat');
+    const qualitySlider = document.getElementById('qualitySlider');
+    const qualityValue = document.getElementById('qualityValue');
+    const mobiWarning = document.getElementById('mobiWarning');
+    
+    let selectedFile = null;
+
+    qualitySlider.addEventListener('input', (e) => { qualityValue.textContent = `${e.target.value}%`; });
+
+    fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    function handleFile(file) {
+        if (!file) return;
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        const validExts = ['.cbz', '.cbs', '.cbr', '.epub', '.docx', '.xlsx', '.csv', '.txt', '.tiff', '.tif', '.mobi', '.azw3'];
+        
+        if (!validExts.includes(ext)) {
+            setStatus('Please select a supported file type.', 'error');
+            return;
+        }
+        
+        selectedFile = file;
+        fileNameDisplay.textContent = file.name;
+        setStatus('');
+        progressFill.style.width = '0%';
+        progressContainer.classList.remove('active');
+
+        if (ext === '.mobi' || ext === '.azw3') {
+            mobiWarning.style.display = 'block';
+            convertBtn.disabled = true;
+            setStatus('⚠️ MOBI/AZW3 conversion is disabled. Please use Calibre.', 'warning');
+        } else {
+            mobiWarning.style.display = 'none';
+            convertBtn.disabled = false;
+        }
+    }
+
+    convertBtn.addEventListener('click', startConversion);
+
+    async function startConversion() {
+        if (!selectedFile) return;
+        const ext = selectedFile.name.substring(selectedFile.name.lastIndexOf('.')).toLowerCase();
+        
+        if (ext === '.mobi' || ext === '.azw3') {
+            setStatus('❌ Cannot process MOBI/AZW3 locally.', 'error');
+            return;
+        }
+
+        convertBtn.disabled = true;
+        convertBtn.innerHTML = '<span class="spinner"></span> Processing...';
+        progressContainer.classList.add('active');
+        
+        const targetFormat = outputFormat.value;
+        const jpegQuality = parseInt(qualitySlider.value) / 100;
+
+        try {
+            const arrayBuffer = await selectedFile.arrayBuffer();
+            let pages = []; 
+
+            if (ext === '.cbz' || ext === '.cbs') {
+                setStatus('Extracting comic images...');
+                const zip = await JSZip.loadAsync(arrayBuffer);
+                pages = await extractZipImages(zip);
+            } 
+            else if (ext === '.cbr') {
+                setStatus('Extracting CBR archive (WASM)...');
+                pages = await extractCbrImages(arrayBuffer);
+            } 
+            else if (ext === '.epub') {
+                setStatus('Parsing eBook structure...');
+                const zip = await JSZip.loadAsync(arrayBuffer);
+                pages = await extractEpubContent(zip);
+            } 
+            else if (ext === '.docx') {
+                setStatus('Converting Word document...');
+                pages = await extractDocxHtml(arrayBuffer);
+            } 
+            else if (ext === '.xlsx' || ext === '.csv') {
+                setStatus('Reading spreadsheet data...');
+                pages = await extractSpreadsheetHtml(arrayBuffer);
+            } 
+            else if (ext === '.txt') {
+                setStatus('Formatting text file...');
+                pages = await extractTxtHtml(arrayBuffer);
+            } 
+            else if (ext === '.tiff' || ext === '.tif') {
+                setStatus('Decoding TIFF image...');
+                pages = await extractTiffImages(arrayBuffer);
+            }
+
+            if (pages.length === 0) throw new Error("No readable content found in the file.");
+
+            setStatus(`Processing ${pages.length} pages...`);
+
+            if (targetFormat === 'pdf') {
+                await generatePdf(pages, jpegQuality);
+            } else {
+                await generateImageZip(pages, jpegQuality);
+            }
+
+            setStatus('✅ Conversion complete! Download started.', 'success');
+            progressFill.style.width = '100%';
+
+        } catch (error) {
+            console.error(error);
+            setStatus(`❌ Error: ${error.message}`, 'error');
+            progressContainer.classList.remove('active');
+        } finally {
+            if (selectedFile) {
+                const ext = selectedFile.name.substring(selectedFile.name.lastIndexOf('.')).toLowerCase();
+                if (ext !== '.mobi' && ext !== '.azw3') {
+                    convertBtn.disabled = false;
+                }
+            }
+            convertBtn.innerHTML = 'Convert';
+        }
+    }
+
+    async function extractZipImages(zip) {
+        const imageExts = /\.(jpe?g|png|webp|bmp|gif|tiff?)$/i;
+        const files = Object.values(zip.files).filter(f => !f.dir && imageExts.test(f.name));
+        files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+        return files.map(f => ({ type: 'image', data: f }));
+    }
+
+    async function extractCbrImages(arrayBuffer) {
+        const { createExtractorFromData } = await import('https://cdn.jsdelivr.net/npm/node-unrar-js@2.0.2/+esm');
+        const extractor = await createExtractorFromData({ data: new Uint8Array(arrayBuffer) });
+        const extracted = extractor.extract();
+        const files = [...extracted.files].filter(f => !f.fileHeader.isDirectory);
+        
+        const imageExts = /\.(jpe?g|png|webp|bmp|gif|tiff?)$/i;
+        const imageFiles = files.filter(f => imageExts.test(f.fileHeader.name));
+        imageFiles.sort((a, b) => a.fileHeader.name.localeCompare(b.fileHeader.name, undefined, { numeric: true }));
+        
+        return imageFiles.map(f => ({ type: 'image', data: new Blob([f.extraction]) }));
+    }
+
+    async function extractEpubContent(zip) {
+        const htmlExts = /\.(x?html)$/i;
+        const htmlFiles = Object.values(zip.files).filter(f => !f.dir && htmlExts.test(f.name));
+        if (htmlFiles.length > 0) {
+            htmlFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+            return htmlFiles.map(f => ({ type: 'html', data: f }));
+        }
+        return await extractZipImages(zip);
+    }
+
+    async function extractDocxHtml(arrayBuffer) {
+        const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+        const styledHtml = `<div style="font-family: serif; line-height: 1.6; padding: 20px;">${result.value}</div>`;
+        return [{ type: 'html', data: styledHtml }];
+    }
+
+    async function extractSpreadsheetHtml(arrayBuffer) {
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const pages = [];
+        for (const sheetName of workbook.SheetNames) {
+            const sheet = workbook.Sheets[sheetName];
+            const html = XLSX.utils.sheet_to_html(sheet, { editable: false });
+            const styledHtml = `<div style="padding: 20px; font-family: sans-serif;"><h2>${sheetName}</h2>${html}</div>`;
+            pages.push({ type: 'html', data: styledHtml });
+        }
+        return pages;
+    }
+
+    async function extractTxtHtml(arrayBuffer) {
+        const text = new TextDecoder().decode(arrayBuffer);
+        const escapedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const html = `<pre style="white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 14px; line-height: 1.5; padding: 20px;">${escapedText}</pre>`;
+        return [{ type: 'html', data: html }];
+    }
+
+    async function extractTiffImages(arrayBuffer) {
+        const ifds = UTIF.decode(arrayBuffer);
+        const pages = [];
+        for (const ifd of ifds) {
+            UTIF.decodeImage(arrayBuffer, ifd);
+            const rgba = UTIF.toRGBA8(ifd);
+            const canvas = document.createElement('canvas');
+            canvas.width = ifd.width;
+            canvas.height = ifd.height;
+            const ctx = canvas.getContext('2d');
+            const imgData = ctx.createImageData(ifd.width, ifd.height);
+            imgData.data.set(rgba);
+            ctx.putImageData(imgData, 0, 0);
+            pages.push({ type: 'canvas', data: canvas });
+        }
+        return pages;
+    }
+
+    async function generatePdf(pages, quality) {
+        const pdfDoc = await PDFDocument.create();
+
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+            updateProgress(i, pages.length);
+            
+            let jpegBytes;
+            if (page.type === 'image') {
+                const blob = page.data instanceof Blob ? page.data : await page.data.async('blob');
+                jpegBytes = await imageToJpegBytes(blob, quality);
+            } else if (page.type === 'canvas') {
+                jpegBytes = await canvasToJpegBytes(page.data, quality);
+            } else if (page.type === 'html') {
+                const htmlContent = page.data instanceof Object && page.data.async ? await page.data.async('string') : page.data;
+                const canvas = await renderHtmlToCanvas(htmlContent);
+                jpegBytes = await canvasToJpegBytes(canvas, quality);
+            }
+
+            const image = await pdfDoc.embedJpg(jpegBytes);
+            const pdfPage = pdfDoc.addPage([image.width, image.height]);
+            pdfPage.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+        }
+
+        const pdfBytes = await pdfDoc.save();
+        downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), getOutputName('.pdf'));
+    }
+
+    async function generateImageZip(pages, quality) {
+        const outZip = new JSZip();
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+            updateProgress(i, pages.length);
+            
+            let jpegBytes;
+            if (page.type === 'image') {
+                const blob = page.data instanceof Blob ? page.data : await page.data.async('blob');
+                jpegBytes = await imageToJpegBytes(blob, quality);
+            } else if (page.type === 'canvas') {
+                jpegBytes = await canvasToJpegBytes(page.data, quality);
+            } else if (page.type === 'html') {
+                const htmlContent = page.data instanceof Object && page.data.async ? await page.data.async('string') : page.data;
+                const canvas = await renderHtmlToCanvas(htmlContent);
+                jpegBytes = await canvasToJpegBytes(canvas, quality);
+            }
+
+            const paddedIndex = String(i + 1).padStart(4, '0');
+            outZip.file(`page_${paddedIndex}.jpg`, jpegBytes);
+        }
+        const zipBlob = await outZip.generateAsync({ type: 'blob' });
+        downloadBlob(zipBlob, getOutputName('.zip'));
+    }
+
+    function imageToJpegBytes(blob, quality) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const bitmap = await createImageBitmap(blob);
+                const canvas = document.createElement('canvas');
+                canvas.width = bitmap.width;
+                canvas.height = bitmap.height;
+                canvas.getContext('2d').drawImage(bitmap, 0, 0);
+                bitmap.close();
+                canvasToJpegBytes(canvas, quality).then(resolve).catch(reject);
+            } catch (err) { reject(err); }
+        });
+    }
+
+    function canvasToJpegBytes(canvas, quality) {
+        return new Promise((resolve, reject) => {
+            canvas.toBlob(blob => {
+                blob.arrayBuffer().then(buffer => resolve(new Uint8Array(buffer))).catch(reject);
+            }, 'image/jpeg', quality);
+        });
+    }
+
+    async function renderHtmlToCanvas(htmlContent) {
+        return new Promise((resolve, reject) => {
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'absolute';
+            iframe.style.left = '-9999px';
+            iframe.style.width = '800px';
+            iframe.style.border = 'none';
+            iframe.style.background = 'white';
+            document.body.appendChild(iframe);
+
+            iframe.onload = async () => {
+                try {
+                    const doc = iframe.contentDocument;
+                    iframe.style.height = doc.body.scrollHeight + 'px';
+                    
+                    await new Promise(r => setTimeout(r, 300)); 
+                    const canvas = await html2canvas(doc.body, {
+                        useCORS: true,
+                        allowTaint: true,
+                        scale: 2,
+                        backgroundColor: '#ffffff'
+                    });
+                    document.body.removeChild(iframe);
+                    resolve(canvas);
+                } catch (err) {
+                    document.body.removeChild(iframe);
+                    reject(err);
+                }
+            };
+            
+            iframe.onerror = () => {
+                document.body.removeChild(iframe);
+                reject(new Error('Failed to render document'));
+            };
+
+            iframe.contentDocument.open();
+            iframe.contentDocument.write(htmlContent);
+            iframe.contentDocument.close();
+        });
+    }
+
+    function updateProgress(current, total) {
+        const pct = ((current + 1) / total) * 100;
+        progressFill.style.width = `${pct}%`;
+        setStatus(`Processing page ${current + 1} of ${total}...`);
+    }
+
+    function getOutputName(ext) {
+        return selectedFile.name.replace(/\.(cbz|cbs|cbr|epub|docx|xlsx|csv|txt|tiff|tif|mobi|azw3)$/i, ext);
+    }
+
+    function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    function setStatus(msg, type = '') {
+        statusDisplay.textContent = msg;
+        statusDisplay.className = 'status ' + type;
+    }
+</script>
+
+</body>
+</html>
