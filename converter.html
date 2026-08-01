@@ -4,17 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Ultimate Local Document & Comic Converter</title>
-    
+
     <!-- Core Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    
+
     <!-- Format Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.min.js"></script>
-    
+
     <style>
         :root {
             --primary: #3b82f6;
@@ -38,8 +38,8 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg);
             margin: 0;
-            min-height: 100vh; 
-            min-height: 100dvh; 
+            min-height: 100vh;
+            min-height: 100dvh;
             display: flex;
             justify-content: center;
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
@@ -52,7 +52,7 @@
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
             width: 100%;
             max-width: 600px;
-            margin: auto; 
+            margin: auto;
         }
 
         h1 { color: var(--text); margin-top: 0; text-align: center; font-size: clamp(1.5rem, 5vw, 1.8rem); }
@@ -83,11 +83,111 @@
         }
         .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background-color: #eff6ff; }
         .drop-zone p { color: var(--text-light); margin: 0.5rem 0; font-size: clamp(0.85rem, 2.5vw, 1rem); }
-        .file-name { font-weight: bold; color: var(--text); word-break: break-word; margin-top: 1rem; font-size: 0.95rem; }
-        
+
         .supported-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 1rem; }
         .tag { background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
         .tag.warning-tag { background: #fef3c7; color: #92400e; }
+
+        /* --- File Queue Styles --- */
+        .file-queue {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: clamp(1rem, 3vw, 1.5rem);
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+        .file-queue.active { display: block; }
+        
+        .queue-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .queue-title {
+            font-weight: 600;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+        .queue-count {
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .clear-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: auto;
+            width: auto;
+        }
+        .clear-btn:hover {
+            background: #fee2e2;
+            border-color: var(--error);
+            color: var(--error);
+        }
+
+        .file-list {
+            max-height: 200px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .file-item {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 0.6rem 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+        .file-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .file-name-queue {
+            font-weight: 500;
+            color: var(--text);
+            word-break: break-all;
+            font-size: 0.85rem;
+        }
+        .file-size {
+            color: var(--text-light);
+            font-size: 0.75rem;
+            margin-top: 2px;
+        }
+        .remove-btn {
+            background: transparent;
+            border: none;
+            color: var(--error);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background 0.2s;
+            font-size: 1.2rem;
+            line-height: 1;
+            min-height: auto;
+            width: auto;
+        }
+        .remove-btn:hover {
+            background: #fee2e2;
+        }
 
         .settings {
             background: #f9fafb;
@@ -102,11 +202,11 @@
             align-items: center;
             margin-bottom: 1rem;
             gap: 1rem;
-            flex-wrap: wrap; 
+            flex-wrap: wrap;
         }
         .setting-row:last-child { margin-bottom: 0; }
         .setting-label { font-weight: 500; color: var(--text); font-size: clamp(0.9rem, 2.5vw, 0.95rem); }
-        
+
         select {
             cursor: pointer;
             padding: 0.6rem 0.8rem;
@@ -114,9 +214,9 @@
             border: 1px solid var(--border);
             background: white;
             font-size: 0.9rem;
-            min-height: 44px; 
+            min-height: 44px;
         }
-        
+
         .quality-control { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 150px; }
         input[type="range"] { cursor: pointer; flex: 1; accent-color: var(--primary); height: 24px; }
         .quality-value { font-weight: bold; color: var(--primary); min-width: 45px; text-align: right; font-size: 0.95rem; }
@@ -132,7 +232,7 @@
             cursor: pointer;
             transition: background 0.2s;
             width: 100%;
-            min-height: 48px; 
+            min-height: 48px;
         }
         button:hover:not(:disabled) { background-color: var(--primary-hover); }
         button:disabled { background-color: #9ca3af; cursor: not-allowed; }
@@ -154,7 +254,7 @@
         .status.error { color: var(--error); font-weight: 500; }
         .status.success { color: var(--success); font-weight: 500; }
         .status.warning { color: var(--warning-text); font-weight: 500; }
-        
+
         .spinner {
             display: inline-block;
             width: 16px; height: 16px;
@@ -167,7 +267,6 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* --- Powered by Qwen AI Footer --- */
         .footer {
             margin-top: 2rem;
             padding-top: 1.5rem;
@@ -200,16 +299,16 @@
 <div class="container">
     <h1>📚 Ultimate Converter</h1>
     <p class="subtitle">100% Local & Private. Files never leave your device.</p>
-    
+
     <div id="mobiWarning" class="warning-banner">
         ⚠️ <strong>MOBI/AZW3 Detected:</strong> These are proprietary Amazon formats and cannot be processed locally. For the best results, please convert them to EPUB first using a free tool like <a href="https://calibre-ebook.com/" target="_blank" style="color: #92400e; text-decoration: underline;">Calibre</a>. Conversion is disabled for these files.
     </div>
 
     <div class="drop-zone" id="dropZone">
         <p>Drag & drop your files here</p>
-        <input type="file" id="fileInput" accept=".cbz,.cbs,.cbr,.epub,.docx,.xlsx,.csv,.txt,.tiff,.tif,.mobi,.azw3" hidden>
+        <p style="font-size: 0.8rem;">(Multiple files supported)</p>
+        <input type="file" id="fileInput" accept=".cbz,.cbs,.cbr,.epub,.docx,.xlsx,.csv,.txt,.tiff,.tif,.mobi,.azw3" multiple hidden>
         <button type="button" onclick="document.getElementById('fileInput').click()">Browse Files</button>
-        <p class="file-name" id="fileName"></p>
         <div class="supported-tags">
             <span class="tag">CBZ/CBR</span>
             <span class="tag">EPUB</span>
@@ -219,6 +318,18 @@
             <span class="tag">TIFF</span>
             <span class="tag warning-tag">MOBI/AZW3*</span>
         </div>
+    </div>
+
+    <!-- File Queue -->
+    <div class="file-queue" id="fileQueue">
+        <div class="queue-header">
+            <div>
+                <span class="queue-title">Files to convert</span>
+                <span class="queue-count" id="queueCount">0</span>
+            </div>
+            <button type="button" class="clear-btn" id="clearBtn">Clear All</button>
+        </div>
+        <div class="file-list" id="fileList"></div>
     </div>
 
     <div class="settings">
@@ -239,7 +350,7 @@
     </div>
 
     <button id="convertBtn" disabled>Convert</button>
-    
+
     <div class="progress-container" id="progressContainer">
         <div class="progress-bar">
             <div class="progress-fill" id="progressFill"></div>
@@ -248,7 +359,6 @@
 
     <div class="status" id="status"></div>
 
-    <!-- Powered by Qwen AI Footer -->
     <div class="footer">
         <div class="powered-by">
             <span>Powered by</span>
@@ -262,7 +372,6 @@
 
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
-    const fileNameDisplay = document.getElementById('fileName');
     const convertBtn = document.getElementById('convertBtn');
     const statusDisplay = document.getElementById('status');
     const progressContainer = document.getElementById('progressContainer');
@@ -271,124 +380,180 @@
     const qualitySlider = document.getElementById('qualitySlider');
     const qualityValue = document.getElementById('qualityValue');
     const mobiWarning = document.getElementById('mobiWarning');
-    
-    let selectedFile = null;
+    const fileQueue = document.getElementById('fileQueue');
+    const fileList = document.getElementById('fileList');
+    const queueCount = document.getElementById('queueCount');
+    const clearBtn = document.getElementById('clearBtn');
+
+    let selectedFiles = [];
 
     qualitySlider.addEventListener('input', (e) => { qualityValue.textContent = `${e.target.value}%`; });
 
-    fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+    fileInput.addEventListener('change', (e) => handleFiles(Array.from(e.target.files)));
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
     dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
         dropZone.classList.remove('dragover');
-        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files));
     });
 
-    function handleFile(file) {
-        if (!file) return;
-        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    clearBtn.addEventListener('click', () => {
+        selectedFiles = [];
+        updateQueueUI();
+    });
+
+    function handleFiles(files) {
         const validExts = ['.cbz', '.cbs', '.cbr', '.epub', '.docx', '.xlsx', '.csv', '.txt', '.tiff', '.tif', '.mobi', '.azw3'];
         
-        if (!validExts.includes(ext)) {
-            setStatus('Please select a supported file type.', 'error');
-            return;
-        }
+        let hasMobi = false;
         
-        selectedFile = file;
-        fileNameDisplay.textContent = file.name;
-        setStatus('');
-        progressFill.style.width = '0%';
-        progressContainer.classList.remove('active');
+        files.forEach(file => {
+            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            if (!validExts.includes(ext)) {
+                setStatus(`Skipped unsupported file: ${file.name}`, 'warning');
+                return;
+            }
+            
+            // Check for duplicates
+            if (!selectedFiles.find(f => f.name === file.name && f.size === file.size)) {
+                selectedFiles.push(file);
+                if (ext === '.mobi' || ext === '.azw3') hasMobi = true;
+            }
+        });
 
-        if (ext === '.mobi' || ext === '.azw3') {
+        updateQueueUI();
+
+        if (hasMobi) {
             mobiWarning.style.display = 'block';
-            convertBtn.disabled = true;
-            setStatus('⚠️ MOBI/AZW3 conversion is disabled. Please use Calibre.', 'warning');
         } else {
             mobiWarning.style.display = 'none';
-            convertBtn.disabled = false;
         }
+    }
+
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        updateQueueUI();
+    }
+
+    function updateQueueUI() {
+        if (selectedFiles.length === 0) {
+            fileQueue.classList.remove('active');
+            convertBtn.disabled = true;
+            setStatus('');
+            return;
+        }
+
+        fileQueue.classList.add('active');
+        queueCount.textContent = selectedFiles.length;
+        convertBtn.disabled = false;
+
+        fileList.innerHTML = '';
+        selectedFiles.forEach((file, index) => {
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            item.innerHTML = `
+                <div class="file-info">
+                    <div class="file-name-queue">${file.name}</div>
+                    <div class="file-size">${formatFileSize(file.size)}</div>
+                </div>
+                <button type="button" class="remove-btn" onclick="removeFile(${index})" title="Remove">×</button>
+            `;
+            fileList.appendChild(item);
+        });
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     }
 
     convertBtn.addEventListener('click', startConversion);
 
     async function startConversion() {
-        if (!selectedFile) return;
-        const ext = selectedFile.name.substring(selectedFile.name.lastIndexOf('.')).toLowerCase();
-        
-        if (ext === '.mobi' || ext === '.azw3') {
-            setStatus('❌ Cannot process MOBI/AZW3 locally.', 'error');
-            return;
-        }
+        if (selectedFiles.length === 0) return;
 
         convertBtn.disabled = true;
         convertBtn.innerHTML = '<span class="spinner"></span> Processing...';
         progressContainer.classList.add('active');
-        
+
         const targetFormat = outputFormat.value;
         const jpegQuality = parseInt(qualitySlider.value) / 100;
+        
+        let successCount = 0;
+        let failCount = 0;
+        let mobiCount = 0;
 
-        try {
-            const arrayBuffer = await selectedFile.arrayBuffer();
-            let pages = []; 
+        for (let i = 0; i < selectedFiles.length; i++) {
+            const file = selectedFiles[i];
+            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
 
-            if (ext === '.cbz' || ext === '.cbs') {
-                setStatus('Extracting comic images...');
-                const zip = await JSZip.loadAsync(arrayBuffer);
-                pages = await extractZipImages(zip);
-            } 
-            else if (ext === '.cbr') {
-                setStatus('Extracting CBR archive (WASM)...');
-                pages = await extractCbrImages(arrayBuffer);
-            } 
-            else if (ext === '.epub') {
-                setStatus('Parsing eBook structure...');
-                const zip = await JSZip.loadAsync(arrayBuffer);
-                pages = await extractEpubContent(zip);
-            } 
-            else if (ext === '.docx') {
-                setStatus('Converting Word document...');
-                pages = await extractDocxHtml(arrayBuffer);
-            } 
-            else if (ext === '.xlsx' || ext === '.csv') {
-                setStatus('Reading spreadsheet data...');
-                pages = await extractSpreadsheetHtml(arrayBuffer);
-            } 
-            else if (ext === '.txt') {
-                setStatus('Formatting text file...');
-                pages = await extractTxtHtml(arrayBuffer);
-            } 
-            else if (ext === '.tiff' || ext === '.tif') {
-                setStatus('Decoding TIFF image...');
-                pages = await extractTiffImages(arrayBuffer);
+            setStatus(`Processing file ${i + 1} of ${selectedFiles.length}: ${file.name}`);
+            progressFill.style.width = `${(i / selectedFiles.length) * 100}%`;
+
+            if (ext === '.mobi' || ext === '.azw3') {
+                mobiCount++;
+                continue;
             }
 
-            if (pages.length === 0) throw new Error("No readable content found in the file.");
-
-            setStatus(`Processing ${pages.length} pages...`);
-
-            if (targetFormat === 'pdf') {
-                await generatePdf(pages, jpegQuality);
-            } else {
-                await generateImageZip(pages, jpegQuality);
+            try {
+                await convertSingleFile(file, targetFormat, jpegQuality);
+                successCount++;
+            } catch (error) {
+                console.error(`Error converting ${file.name}:`, error);
+                failCount++;
             }
+        }
 
-            setStatus('✅ Conversion complete! Download started.', 'success');
-            progressFill.style.width = '100%';
+        progressFill.style.width = '100%';
 
-        } catch (error) {
-            console.error(error);
-            setStatus(`❌ Error: ${error.message}`, 'error');
-            progressContainer.classList.remove('active');
-        } finally {
-            if (selectedFile) {
-                const ext = selectedFile.name.substring(selectedFile.name.lastIndexOf('.')).toLowerCase();
-                if (ext !== '.mobi' && ext !== '.azw3') {
-                    convertBtn.disabled = false;
-                }
-            }
-            convertBtn.innerHTML = 'Convert';
+        // Show summary
+        let summary = `✅ Complete! ${successCount} file${successCount !== 1 ? 's' : ''} converted successfully.`;
+        if (failCount > 0) summary += ` ${failCount} failed.`;
+        if (mobiCount > 0) summary += ` ${mobiCount} MOBI/AZW3 skipped (use Calibre).`;
+        
+        setStatus(summary, failCount > 0 ? 'warning' : 'success');
+
+        convertBtn.disabled = false;
+        convertBtn.innerHTML = 'Convert';
+    }
+
+    async function convertSingleFile(file, targetFormat, jpegQuality) {
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        const arrayBuffer = await file.arrayBuffer();
+        let pages = [];
+
+        if (ext === '.cbz' || ext === '.cbs') {
+            const zip = await JSZip.loadAsync(arrayBuffer);
+            pages = await extractZipImages(zip);
+        }
+        else if (ext === '.cbr') {
+            pages = await extractCbrImages(arrayBuffer);
+        }
+        else if (ext === '.epub') {
+            const zip = await JSZip.loadAsync(arrayBuffer);
+            pages = await extractEpubContent(zip);
+        }
+        else if (ext === '.docx') {
+            pages = await extractDocxHtml(arrayBuffer);
+        }
+        else if (ext === '.xlsx' || ext === '.csv') {
+            pages = await extractSpreadsheetHtml(arrayBuffer);
+        }
+        else if (ext === '.txt') {
+            pages = await extractTxtHtml(arrayBuffer);
+        }
+        else if (ext === '.tiff' || ext === '.tif') {
+            pages = await extractTiffImages(arrayBuffer);
+        }
+
+        if (pages.length === 0) throw new Error("No readable content found.");
+
+        if (targetFormat === 'pdf') {
+            await generatePdf(pages, jpegQuality, file.name);
+        } else {
+            await generateImageZip(pages, jpegQuality, file.name);
         }
     }
 
@@ -404,11 +569,11 @@
         const extractor = await createExtractorFromData({ data: new Uint8Array(arrayBuffer) });
         const extracted = extractor.extract();
         const files = [...extracted.files].filter(f => !f.fileHeader.isDirectory);
-        
+
         const imageExts = /\.(jpe?g|png|webp|bmp|gif|tiff?)$/i;
         const imageFiles = files.filter(f => imageExts.test(f.fileHeader.name));
         imageFiles.sort((a, b) => a.fileHeader.name.localeCompare(b.fileHeader.name, undefined, { numeric: true }));
-        
+
         return imageFiles.map(f => ({ type: 'image', data: new Blob([f.extraction]) }));
     }
 
@@ -465,13 +630,13 @@
         return pages;
     }
 
-    async function generatePdf(pages, quality) {
+    async function generatePdf(pages, quality, originalFilename) {
         const pdfDoc = await PDFDocument.create();
 
         for (let i = 0; i < pages.length; i++) {
             const page = pages[i];
-            updateProgress(i, pages.length);
-            
+            updateFileProgress(i, pages.length);
+
             let jpegBytes;
             if (page.type === 'image') {
                 const blob = page.data instanceof Blob ? page.data : await page.data.async('blob');
@@ -490,15 +655,15 @@
         }
 
         const pdfBytes = await pdfDoc.save();
-        downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), getOutputName('.pdf'));
+        downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), getOutputName(originalFilename, '.pdf'));
     }
 
-    async function generateImageZip(pages, quality) {
+    async function generateImageZip(pages, quality, originalFilename) {
         const outZip = new JSZip();
         for (let i = 0; i < pages.length; i++) {
             const page = pages[i];
-            updateProgress(i, pages.length);
-            
+            updateFileProgress(i, pages.length);
+
             let jpegBytes;
             if (page.type === 'image') {
                 const blob = page.data instanceof Blob ? page.data : await page.data.async('blob');
@@ -515,7 +680,7 @@
             outZip.file(`page_${paddedIndex}.jpg`, jpegBytes);
         }
         const zipBlob = await outZip.generateAsync({ type: 'blob' });
-        downloadBlob(zipBlob, getOutputName('.zip'));
+        downloadBlob(zipBlob, getOutputName(originalFilename, '.zip'));
     }
 
     function imageToJpegBytes(blob, quality) {
@@ -554,8 +719,8 @@
                 try {
                     const doc = iframe.contentDocument;
                     iframe.style.height = doc.body.scrollHeight + 'px';
-                    
-                    await new Promise(r => setTimeout(r, 300)); 
+
+                    await new Promise(r => setTimeout(r, 300));
                     const canvas = await html2canvas(doc.body, {
                         useCORS: true,
                         allowTaint: true,
@@ -569,7 +734,7 @@
                     reject(err);
                 }
             };
-            
+
             iframe.onerror = () => {
                 document.body.removeChild(iframe);
                 reject(new Error('Failed to render document'));
@@ -581,14 +746,13 @@
         });
     }
 
-    function updateProgress(current, total) {
+    function updateFileProgress(current, total) {
         const pct = ((current + 1) / total) * 100;
         progressFill.style.width = `${pct}%`;
-        setStatus(`Processing page ${current + 1} of ${total}...`);
     }
 
-    function getOutputName(ext) {
-        return selectedFile.name.replace(/\.(cbz|cbs|cbr|epub|docx|xlsx|csv|txt|tiff|tif|mobi|azw3)$/i, ext);
+    function getOutputName(originalFilename, ext) {
+        return originalFilename.replace(/\.(cbz|cbs|cbr|epub|docx|xlsx|csv|txt|tiff|tif|mobi|azw3)$/i, ext);
     }
 
     function downloadBlob(blob, filename) {
